@@ -79,6 +79,7 @@ class IcebergPosition(Base, UUIDMixin, TimestampMixin):
 
     # Source of observation
     source = Column(String(50), default="demo")
+    source_kind = Column(String(20), default="live", nullable=False)  # historical | live
     confidence = Column(Float, default=1.0)  # 0.0 - 1.0
 
     iceberg = relationship("Iceberg", back_populates="positions")
