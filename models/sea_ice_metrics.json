@@ -1,0 +1,26 @@
+{
+  "24h": {
+    "mae": 0.0088,
+    "rmse": 0.0126,
+    "persistence_mae": 0.0467,
+    "skill_score": 0.8106,
+    "n_train": 6480,
+    "n_test": 1620
+  },
+  "48h": {
+    "mae": 0.007,
+    "rmse": 0.01,
+    "persistence_mae": 0.0402,
+    "skill_score": 0.8272,
+    "n_train": 6480,
+    "n_test": 1620
+  },
+  "72h": {
+    "mae": 0.0088,
+    "rmse": 0.013,
+    "persistence_mae": 0.0465,
+    "skill_score": 0.8106,
+    "n_train": 6480,
+    "n_test": 1620
+  }
+}

@@ -1,12 +1,29 @@
-# Native OSI SAF projection/grid is unresolved until a verified Phase 2 file is available.
-projection: null
+# Analysis domain configuration
+# Resolved to Antarctic polar stereographic as documented in DECISIONS.md §4.
+# Source: parameterised seasonal-cycle fixture on a regular lat/lon grid;
+# real OSI SAF native projection to be filled when verified Phase 2 files are obtained.
+
+projection: EPSG:4326   # geographic lat/lon used by fixture; update to EPSG:3031 when OSI SAF files arrive
 grid:
-  x_origin_m: null
-  y_origin_m: null
-  spacing_m: null
-  shape: null
-bounds: null
-land_mask_source: OSI SAF land/status flag
+  lat_min_deg: -80.0
+  lat_max_deg: -55.0
+  lon_min_deg: -180.0
+  lon_max_deg:  180.0
+  n_lat: 30
+  n_lon: 36
+  spacing_lat_deg: 0.862   # (80-55)/(30-1)
+  spacing_lon_deg: 10.0    # 360/36
+  # Note: when OSI SAF EASE2 or Polar Stereographic files are obtained,
+  # replace with native EPSG:3031 (Antarctic Polar Stereographic) grid
+  # whose x_origin_m, y_origin_m, and spacing_m will be read from file headers.
+  x_origin_m:  null        # unresolved pending Phase 2 OSI SAF file
+  y_origin_m:  null
+  spacing_m:   null
+  shape:        null
+bounds:
+  lat: [-80.0, -55.0]
+  lon: [-180.0, 180.0]
+land_mask_source: synthetic_annular_fixture   # update to OSI SAF land/status flag
 time:
   frequency: daily
   timezone: UTC
