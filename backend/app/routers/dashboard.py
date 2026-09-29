@@ -73,8 +73,8 @@ async def get_dashboard(db: Session = Depends(get_db)):
         "vessel_source":       vessel_info.get("source"),
 
         # ── Sea Ice ───────────────────────────────────────────────────────────
-        "sea_ice_coverage_pct": sea_ice_info.get("coverage_pct", 0),
-        "sea_ice_extent_km2":   sea_ice_info.get("extent_km2", 0),
+        "sea_ice_coverage_pct": (sea_ice_info.get("coverage_pct") if sea_ice_info.get("coverage_pct") is not None else 0.0),
+        "sea_ice_extent_km2":   (sea_ice_info.get("extent_km2") if sea_ice_info.get("extent_km2") is not None else 0.0),
         "sea_ice_source":       sea_ice_info.get("source"),
         "sea_ice_updated":      sea_ice_info.get("last_updated"),
         "sea_ice_data_mode":    sea_ice_info.get("data_mode", "offline"),
@@ -184,7 +184,7 @@ def _get_sea_ice_info() -> dict:
                 "extent_km2": grid["extent_km2"],
                 "source": "demo", "data_mode": "demo"}
 
-    return {"coverage_pct": None, "extent_km2": None,
+    return {"coverage_pct": 0.0, "extent_km2": 0.0,
             "source": "unavailable", "data_mode": "offline"}
 
 

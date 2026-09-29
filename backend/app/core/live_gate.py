@@ -44,10 +44,39 @@ def allow_demo_fallback() -> bool:
     return not is_live_mode()
 
 
+DEFAULT_SOURCE_PAYLOADS: Dict[str, Dict[str, Any]] = {
+    "sea_ice": {
+        "grid_points": [],
+        "coverage_pct": 0.0,
+        "extent_km2": 0.0,
+        "data_points": [],
+        "source": "unavailable",
+    },
+    "icebergs": {
+        "icebergs": [],
+        "total_count": 0,
+        "active_count": 0,
+        "high_risk_count": 0,
+        "positions": [],
+        "trajectory": [],
+        "source": "unavailable",
+    },
+    "weather": {
+        "grid_points": [],
+        "source": "unavailable",
+    },
+    "ocean": {
+        "grid_points": [],
+        "source": "unavailable",
+    },
+}
+
+
 def offline_response(
     source_id: str,
     message: str = None,
     last_updated: Optional[datetime] = None,
+    extra_fields: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Build an OFFLINE response to return instead of demo data in LIVE mode.
@@ -58,7 +87,11 @@ def offline_response(
     if last_ok is None and freshness and freshness.last_updated:
         last_ok = freshness.last_updated
 
-    return {
+    payload = dict(DEFAULT_SOURCE_PAYLOADS.get(source_id, {}))
+    if extra_fields:
+        payload.update(extra_fields)
+
+    payload.update({
         "status": "OFFLINE",
         "source_id": source_id,
         "message": message or (
@@ -71,7 +104,8 @@ def offline_response(
         "is_real": False,
         "reason": message or "Real source unavailable or failed validation.",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
+    })
+    return payload
 
 
 def check_or_offline(source_id: str, has_data: bool, message: str = None) -> Optional[Dict]:

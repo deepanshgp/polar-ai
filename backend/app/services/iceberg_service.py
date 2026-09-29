@@ -116,16 +116,24 @@ def get_iceberg_detail(iceberg_name: str):
             return enriched
 
         # Iceberg not found in real data
-        return offline_response("icebergs",
-            f"Iceberg '{iceberg_name}' not found in NIC database.")
+        return None
+
+    # Check if demo has this iceberg
+    from app.services.demo_service import get_iceberg_detail as _demo_det
+    demo_ib = _demo_det(iceberg_name)
+    if not demo_ib:
+        return None
 
     # LIVE gate
     gate = check_or_offline("icebergs", False,
         "NIC iceberg data not yet available.")
     if gate is not None:
+        gate = dict(gate)
+        gate.update({"iceberg_name": iceberg_name, "positions": []})
         return gate
 
-    return _get_demo_iceberg_detail(iceberg_name)
+    demo_ib.update(_freshness_tag(False))
+    return demo_ib
 
 
 def _get_demo_iceberg_detail(iceberg_name: str):
@@ -151,15 +159,24 @@ def get_trajectory(iceberg_name: str, horizon_hours: int = 72):
         result.update(_freshness_tag(True))
         return result
 
+    if bool(real):
+        # Real data is available, but this iceberg was not found in it
+        return None
+
+    # Check if demo trajectory exists for this iceberg
+    demo_result = _demo_traj(iceberg_name, horizon_hours)
+    if not demo_result:
+        return None
+
     gate = check_or_offline("icebergs", False,
         f"Iceberg '{iceberg_name}' not in NIC database.")
     if gate is not None:
+        gate = dict(gate)
+        gate.update({"iceberg_name": iceberg_name, "trajectory": []})
         return gate
 
-    result = _demo_traj(iceberg_name, horizon_hours)
-    if result:
-        result.update(_freshness_tag(False))
-    return result
+    demo_result.update(_freshness_tag(False))
+    return demo_result
 
 
 def _build_trajectory(iceberg_name: str, lat: float, lon: float,
