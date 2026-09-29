@@ -11,7 +11,7 @@ class HealthResponse(BaseModel):
     version: str
     database: str
     postgis: bool
-    data_mode: DataMode
+    data_mode: str
     llm_available: bool
     llm_provider: str
 
@@ -36,7 +36,7 @@ class DashboardStats(BaseModel):
     vessel_status: str
     vessel_lat: float
     vessel_lon: float
-    data_mode: DataMode
+    data_mode: str
     last_updated: datetime
 
 

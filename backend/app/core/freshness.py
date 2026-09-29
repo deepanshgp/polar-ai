@@ -24,6 +24,7 @@ class DataMode(str, Enum):
     REAL = "real"
     DEMO = "demo"
     UNAVAILABLE = "unavailable"
+    LIVE = "live"
 
 
 class DataStatus(str, Enum):

@@ -1,11 +1,10 @@
 // POLAR-AI v2 TypeScript types
 
-export type DataMode = 'live' | 'demo' | 'near_real_time' | 'latest_available' | 'stale' | 'offline' | 'unknown'
+export type DataMode = 'live' | 'demo' | 'near_real_time' | 'latest_available' | 'stale' | 'offline' | 'unknown' | 'real' | 'unavailable'
 export type RiskCategory = 'low' | 'moderate' | 'high' | 'extreme'
 export type AlertLevel = 'INFO' | 'WARNING' | 'DANGER' | 'CRITICAL'
 
 // ── Freshness ─────────────────────────────────────────────────────────────────
-export type DataMode = 'real' | 'demo' | 'unavailable'
 
 export interface FreshnessInfo {
   source_id: string
@@ -21,6 +20,7 @@ export interface FreshnessInfo {
   record_count: number | null
   is_real: boolean
   last_error: string | null
+  data_mode?: string
 }
 
 export interface SystemStatus {
@@ -37,7 +37,6 @@ export interface SystemStatus {
 // ── Health ────────────────────────────────────────────────────────────────────
 export interface HealthStatus {
   status: string
-  data_mode?: DataMode
   timestamp: string
   version: string
   database: string
