@@ -1,0 +1,13 @@
+# Native OSI SAF projection/grid is unresolved until a verified Phase 2 file is available.
+projection: null
+grid:
+  x_origin_m: null
+  y_origin_m: null
+  spacing_m: null
+  shape: null
+bounds: null
+land_mask_source: OSI SAF land/status flag
+time:
+  frequency: daily
+  timezone: UTC
+  valid_day: UTC calendar day
