@@ -1,5 +1,6 @@
 """Common Pydantic schemas used across POLAR-AI."""
 from pydantic import BaseModel
+from app.core.freshness import DataMode
 from typing import Optional, Any, Dict
 from datetime import datetime
 
@@ -10,7 +11,7 @@ class HealthResponse(BaseModel):
     version: str
     database: str
     postgis: bool
-    data_mode: str
+    data_mode: DataMode
     llm_available: bool
     llm_provider: str
 
@@ -35,7 +36,7 @@ class DashboardStats(BaseModel):
     vessel_status: str
     vessel_lat: float
     vessel_lon: float
-    data_mode: str
+    data_mode: DataMode
     last_updated: datetime
 
 

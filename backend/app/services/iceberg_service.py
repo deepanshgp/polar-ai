@@ -8,7 +8,7 @@ fake A-76A / B-22A / demo coordinates.
 from datetime import datetime, timezone
 from typing import Optional
 from app.config import settings
-from app.core.freshness import FreshnessRegistry, DataStatus
+from app.core.freshness import FreshnessRegistry, DataStatus, DataMode
 from app.core.live_gate import check_or_offline, allow_demo_fallback, offline_response
 
 
@@ -17,7 +17,7 @@ def _freshness_tag(is_real: bool) -> dict:
     return {
         "freshness": f.to_dict() if f else None,
         "is_real": is_real,
-        "data_mode": "live" if is_real else ("offline" if not allow_demo_fallback() else "demo"),
+        "data_mode": DataMode.REAL.value if is_real else (DataMode.UNAVAILABLE.value if not allow_demo_fallback() else DataMode.DEMO.value),
     }
 
 
@@ -25,9 +25,9 @@ def _get_real_icebergs():
     try:
         from app.sources.iceberg_source import get_iceberg_source
         real = get_iceberg_source().get_icebergs()
-        return real if real else []
-    except Exception:
-        return []
+        return (real if real else []), None
+    except Exception as exc:
+        return [], str(exc)
 
 
 def _enrich_iceberg(ib: dict, idx: int) -> dict:
@@ -60,11 +60,11 @@ def _enrich_iceberg(ib: dict, idx: int) -> dict:
 
 
 def list_icebergs():
-    real = _get_real_icebergs()
+    real, error = _get_real_icebergs()
     has_real = bool(real)
 
     gate = check_or_offline("icebergs", has_real,
-        "NIC iceberg data not yet available. Retrying hourly.")
+        error or "NIC iceberg data not yet available. Retrying hourly.")
     if gate is not None:
         return gate
 
@@ -89,7 +89,7 @@ def list_icebergs():
 
 
 def get_iceberg_detail(iceberg_name: str):
-    real = _get_real_icebergs()
+    real, error = _get_real_icebergs()
     has_real = bool(real)
 
     if has_real:
@@ -138,7 +138,7 @@ def _get_demo_iceberg_detail(iceberg_name: str):
 
 def get_trajectory(iceberg_name: str, horizon_hours: int = 72):
     from app.services.demo_service import get_iceberg_trajectory as _demo_traj
-    real = _get_real_icebergs()
+    real, error = _get_real_icebergs()
     is_real = bool(real) and any(r.get("iceberg_name") == iceberg_name for r in real)
 
     # If real source has the iceberg, use real position + physics trajectory
@@ -202,7 +202,7 @@ def _build_trajectory(iceberg_name: str, lat: float, lon: float,
 
 
 def detect_icebergs():
-    real = _get_real_icebergs()
+    real, error = _get_real_icebergs()
     has_real = bool(real)
 
     gate = check_or_offline("icebergs", has_real)

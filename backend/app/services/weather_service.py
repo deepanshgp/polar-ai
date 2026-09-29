@@ -5,7 +5,7 @@ DEMO mode: returns synthetic wind/temp grid.
 """
 import math
 from datetime import datetime, timezone
-from app.core.freshness import FreshnessRegistry
+from app.core.freshness import FreshnessRegistry, DataMode
 from app.core.live_gate import check_or_offline, allow_demo_fallback, offline_response
 
 
@@ -14,7 +14,7 @@ def _freshness_tag(is_real: bool) -> dict:
     return {
         "freshness": f.to_dict() if f else None,
         "is_real": is_real,
-        "data_mode": "live" if is_real else ("offline" if not allow_demo_fallback() else "demo"),
+        "data_mode": DataMode.REAL.value if is_real else (DataMode.UNAVAILABLE.value if not allow_demo_fallback() else DataMode.DEMO.value),
     }
 
 
@@ -22,17 +22,17 @@ def _get_real_grid():
     try:
         from app.sources.weather_source import get_weather_source
         grid = get_weather_source().get_grid()
-        return grid if grid else []
-    except Exception:
-        return []
+        return (grid if grid else []), None
+    except Exception as exc:
+        return [], str(exc)
 
 
 def get_current_weather():
-    grid = _get_real_grid()
+    grid, error = _get_real_grid()
     has_real = bool(grid)
 
     gate = check_or_offline("weather", has_real,
-        "Open-Meteo weather data not yet fetched.")
+        error or "Open-Meteo weather data not yet fetched.")
     if gate is not None:
         return gate
 
@@ -57,7 +57,7 @@ def get_current_weather():
 
 def get_forecast(horizon_hours: int = 72):
     """Forecast — demo model only (clearly labelled). Open-Meteo hourly forecast coming soon."""
-    grid = _get_real_grid()
+    grid, error = _get_real_grid()
     has_real = bool(grid)
 
     if has_real:
@@ -71,7 +71,7 @@ def get_forecast(horizon_hours: int = 72):
         result.update(_freshness_tag(True))
         return result
 
-    gate = check_or_offline("weather", False, "No weather data available.")
+    gate = check_or_offline("weather", False, error or "No weather data available.")
     if gate is not None:
         return gate
 
@@ -95,13 +95,13 @@ def _build_real_forecast_point(grid):
 
 def get_nearest(lat: float, lon: float):
     """Get weather at nearest grid point to given coordinates."""
-    grid = _get_real_grid()
+    grid, error = _get_real_grid()
     if grid:
         pt = min(grid, key=lambda p:
                  math.sqrt((p["latitude"] - lat)**2 + (p["longitude"] - lon)**2))
         return {**pt, **_freshness_tag(True)}
 
-    gate = check_or_offline("weather", False)
+    gate = check_or_offline("weather", False, error or "Weather data unavailable.")
     if gate is not None:
         return gate
 

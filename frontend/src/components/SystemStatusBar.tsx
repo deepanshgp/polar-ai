@@ -23,14 +23,15 @@ const LABEL: Record<string, string> = {
 }
 
 function SourceChip({ info }: { info: FreshnessInfo }) {
-  const dot = DOT[info.status] || DOT.UNKNOWN
-  const lbl = LABEL[info.status] || LABEL.UNKNOWN
+  const unavailable = info.data_mode === 'unavailable'
+  const dot = unavailable ? 'bg-red-200 animate-pulse' : DOT[info.status] || DOT.UNKNOWN
+  const lbl = unavailable ? 'text-red-100' : LABEL[info.status] || LABEL.UNKNOWN
   return (
     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-polar-card border border-polar-border">
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
       <span className="text-slate-400 text-xs">{info.source_name.replace('Sentinel-1 SAR', 'Satellite').replace('PostgreSQL / PostGIS', 'DB')}</span>
       <span className={`text-xs font-mono ${lbl}`}>
-        {info.status === 'DEMO' ? 'DEMO' : info.age_human || info.status_label}
+        {unavailable ? 'UNAVAILABLE' : info.status === 'DEMO' ? 'DEMO' : info.age_human || info.status_label}
       </span>
     </div>
   )
@@ -49,7 +50,8 @@ export default function SystemStatusBar() {
     ['ais', 'sea_ice', 'icebergs', 'weather', 'ocean', 'satellite', 'database'].includes(s.source_id)
   )
 
-  const allDemo = sources.every(s => s.status === 'DEMO')
+  const allDemo = sources.every(s => s.data_mode === 'demo' || s.status === 'DEMO')
+  const anyUnavailable = sources.some(s => s.data_mode === 'unavailable' || s.status === 'OFFLINE')
 
   return (
     <div className="fixed bottom-0 left-60 right-0 z-50 border-t border-polar-border bg-polar-bg/95 backdrop-blur-sm px-4 py-1.5 flex items-center gap-2 overflow-x-auto">
@@ -60,6 +62,7 @@ export default function SystemStatusBar() {
           ⚠ All sources in DEMO mode
         </span>
       )}
+      {anyUnavailable && <span className="ml-auto text-xs text-red-300 font-semibold flex-shrink-0">⚠ REAL DATA UNAVAILABLE</span>}
       <span className="ml-auto text-xs text-slate-700 flex-shrink-0">
         Research prototype — not for navigation
       </span>

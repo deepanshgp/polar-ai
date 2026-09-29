@@ -5,6 +5,8 @@ export type RiskCategory = 'low' | 'moderate' | 'high' | 'extreme'
 export type AlertLevel = 'INFO' | 'WARNING' | 'DANGER' | 'CRITICAL'
 
 // ── Freshness ─────────────────────────────────────────────────────────────────
+export type DataMode = 'real' | 'demo' | 'unavailable'
+
 export interface FreshnessInfo {
   source_id: string
   source_name: string
@@ -35,6 +37,7 @@ export interface SystemStatus {
 // ── Health ────────────────────────────────────────────────────────────────────
 export interface HealthStatus {
   status: string
+  data_mode?: DataMode
   timestamp: string
   version: string
   database: string

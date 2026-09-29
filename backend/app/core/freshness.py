@@ -20,6 +20,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 
+class DataMode(str, Enum):
+    REAL = "real"
+    DEMO = "demo"
+    UNAVAILABLE = "unavailable"
+
+
 class DataStatus(str, Enum):
     LIVE = "LIVE"
     NEAR_REAL_TIME = "NEAR_REAL_TIME"
@@ -62,7 +68,7 @@ class FreshnessInfo:
     last_attempted: Optional[datetime] = None
     last_error: Optional[str] = None
     age_seconds: Optional[float] = None
-    mode: str = "demo"                      # "live" | "demo"
+    mode: str = DataMode.DEMO.value
     source: str = ""                        # provider name
     record_count: Optional[int] = None
     error_count: int = 0
@@ -85,6 +91,7 @@ class FreshnessInfo:
             "age_seconds": round(age_s, 1) if age_s is not None else None,
             "age_human": _human_age(age_s) if age_s is not None else "unknown",
             "mode": self.mode,
+            "data_mode": self.mode,
             "source": self.source,
             "record_count": self.record_count,
             "error_count": self.error_count,
@@ -202,14 +209,15 @@ class FreshnessRegistry:
         all_info = cls.get_all()
         live_count = sum(1 for i in all_info if i.status == DataStatus.LIVE)
         nrt_count = sum(1 for i in all_info if i.status == DataStatus.NEAR_REAL_TIME)
-        demo_count = sum(1 for i in all_info if i.status == DataStatus.DEMO)
-        offline_count = sum(1 for i in all_info if i.status == DataStatus.OFFLINE)
+        demo_count = sum(1 for i in all_info if i.mode == DataMode.DEMO.value)
+        unavailable_count = sum(1 for i in all_info if i.mode == DataMode.UNAVAILABLE.value)
         return {
             "total": len(all_info),
             "live": live_count,
             "near_real_time": nrt_count,
             "demo": demo_count,
-            "offline": offline_count,
+            "offline": unavailable_count,
+            "unavailable": unavailable_count,
             "sources": [i.to_dict() for i in all_info],
         }
 

@@ -4,7 +4,7 @@ DEMO mode uses synthetic data.
 """
 from datetime import datetime, timezone
 from app.config import settings
-from app.core.freshness import FreshnessRegistry, DataStatus
+from app.core.freshness import FreshnessRegistry, DataStatus, DataMode
 from app.core.live_gate import check_or_offline, allow_demo_fallback, annotate_response
 from app.schemas.sea_ice import SeaIcePredictRequest
 
@@ -14,23 +14,23 @@ def _freshness_tag(is_real: bool) -> dict:
     return {
         "freshness": f.to_dict() if f else None,
         "is_real": is_real,
-        "data_mode": "live" if is_real else ("offline" if not allow_demo_fallback() else "demo"),
+        "data_mode": DataMode.REAL.value if is_real else (DataMode.UNAVAILABLE.value if not allow_demo_fallback() else DataMode.DEMO.value),
     }
 
 
 def _get_real_source():
     try:
         from app.sources.sea_ice_source import get_sea_ice_source
-        return get_sea_ice_source()
-    except Exception:
-        return None
+        return get_sea_ice_source(), None
+    except Exception as exc:
+        return None, str(exc)
 
 
 def _get_real_latest():
-    src = _get_real_source()
+    src, error = _get_real_source()
     if src:
-        return src.get_latest_extent()
-    return None
+        return src.get_latest_extent(), None
+    return None, error
 
 
 def get_current_sea_ice(resolution: str = "low"):
@@ -39,12 +39,12 @@ def get_current_sea_ice(resolution: str = "low"):
     LIVE mode: real NSIDC extent overlaid on spatial physics model.
     DEMO mode: fully synthetic grid.
     """
-    real_extent = _get_real_latest()
+    real_extent, error = _get_real_latest()
     has_real = real_extent is not None
 
     # Gate: LIVE mode with no real data → OFFLINE
     gate = check_or_offline("sea_ice", has_real,
-        "NSIDC sea-ice data not yet fetched. Check /api/live/status.")
+        error or "NSIDC sea-ice data not yet fetched. Check /api/live/status.")
     if gate is not None:
         return gate
 
@@ -71,11 +71,11 @@ def get_current_sea_ice(resolution: str = "low"):
 
 def get_history(days: int = 90):
     """Historical time series — real NSIDC daily CSV in LIVE mode."""
-    src = _get_real_source()
+    src, error = _get_real_source()
     has_real = bool(src and src.get_history(days=1))
 
     gate = check_or_offline("sea_ice", has_real,
-        "No historical sea-ice data available yet.")
+        error or "No historical sea-ice data available yet.")
     if gate is not None:
         return gate
 
@@ -113,7 +113,8 @@ def get_forecast(horizon_hours: int = 72):
         "Physics-based forecast. Not a certified operational forecast."
     )
     target["source"] = "POLAR-AI physics baseline model"
-    f_tag = _freshness_tag(_get_real_latest() is not None)
+    latest, _ = _get_real_latest()
+    f_tag = _freshness_tag(latest is not None)
     target.update(f_tag)
     return target
 

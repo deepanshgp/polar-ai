@@ -175,6 +175,24 @@ def test_weather_forecast():
     assert resp.status_code == 200
 
 
+def test_real_source_exception_is_unavailable(monkeypatch):
+    from app.config import settings
+    from app.services import weather_service
+
+    monkeypatch.setattr(settings, "DATA_MODE", "live")
+    monkeypatch.setattr(
+        weather_service,
+        "_get_real_grid",
+        lambda: ([], "simulated Open-Meteo connection failure"),
+    )
+    response = client.get("/api/weather/current")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["data_mode"] == "unavailable"
+    assert payload["is_real"] is False
+    assert payload["reason"]
+
+
 # ── Ocean ─────────────────────────────────────────────────────────────────────
 
 def test_ocean_current():

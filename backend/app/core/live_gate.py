@@ -27,6 +27,7 @@ from typing import Optional, Dict, Any
 
 from app.config import settings
 from app.core.freshness import FreshnessRegistry
+from app.core.freshness import DataMode
 
 
 def is_live_mode() -> bool:
@@ -66,8 +67,9 @@ def offline_response(
         ),
         "last_successful_update": last_ok.isoformat() if last_ok else None,
         "last_error": freshness.last_error if freshness else None,
-        "data_mode": "offline",
+        "data_mode": DataMode.UNAVAILABLE.value,
         "is_real": False,
+        "reason": message or "Real source unavailable or failed validation.",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -105,7 +107,7 @@ def annotate_response(response: Dict, source_id: str, is_real: bool) -> Dict:
     response["_meta"] = {
         "source_id": source_id,
         "is_real": is_real,
-        "data_mode": "live" if is_real else ("offline" if is_live_mode() else "demo"),
+        "data_mode": DataMode.REAL.value if is_real else (DataMode.UNAVAILABLE.value if is_live_mode() else DataMode.DEMO.value),
         "retrieved_at": datetime.now(timezone.utc).isoformat(),
         "last_updated": freshness.last_updated.isoformat() if (freshness and freshness.last_updated) else None,
         "age_seconds": freshness.to_dict().get("age_seconds") if freshness else None,

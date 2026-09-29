@@ -5,7 +5,7 @@ DEMO mode: returns synthetic current grid.
 """
 import math
 from datetime import datetime, timezone
-from app.core.freshness import FreshnessRegistry
+from app.core.freshness import FreshnessRegistry, DataMode
 from app.core.live_gate import check_or_offline, allow_demo_fallback
 
 
@@ -14,7 +14,7 @@ def _freshness_tag(is_real: bool) -> dict:
     return {
         "freshness": f.to_dict() if f else None,
         "is_real": is_real,
-        "data_mode": "live" if is_real else ("offline" if not allow_demo_fallback() else "demo"),
+        "data_mode": DataMode.REAL.value if is_real else (DataMode.UNAVAILABLE.value if not allow_demo_fallback() else DataMode.DEMO.value),
     }
 
 
@@ -22,17 +22,17 @@ def _get_real_grid():
     try:
         from app.sources.ocean_source import get_ocean_source
         grid = get_ocean_source().get_grid()
-        return grid if grid else []
-    except Exception:
-        return []
+        return (grid if grid else []), None
+    except Exception as exc:
+        return [], str(exc)
 
 
 def get_current_ocean():
-    grid = _get_real_grid()
+    grid, error = _get_real_grid()
     has_real = bool(grid)
 
     gate = check_or_offline("ocean", has_real,
-        "Open-Meteo Marine data not yet fetched.")
+        error or "Open-Meteo Marine data not yet fetched.")
     if gate is not None:
         return gate
 
@@ -59,13 +59,13 @@ def get_current_ocean():
 
 
 def get_nearest(lat: float, lon: float):
-    grid = _get_real_grid()
+    grid, error = _get_real_grid()
     if grid:
         pt = min(grid, key=lambda p:
                  math.sqrt((p["latitude"] - lat)**2 + (p["longitude"] - lon)**2))
         return {**pt, **_freshness_tag(True)}
 
-    gate = check_or_offline("ocean", False)
+    gate = check_or_offline("ocean", False, error or "Open-Meteo Marine data unavailable.")
     if gate is not None:
         return gate
 
