@@ -95,11 +95,15 @@ def test_sea_ice_forecast():
     resp = client.get("/api/sea-ice/forecast?horizon_hours=72")
     assert resp.status_code == 200
     data = resp.json()
-    assert "grid_points" in data
     assert "horizon_hours" in data
     assert data["horizon_hours"] == 72
-    assert "overall_confidence" in data
-    assert 0 <= data["overall_confidence"] <= 1
+    if data.get("data_mode") == "unavailable":
+        assert "reason" in data
+        assert "max_validated_lead" in data
+    else:
+        assert "grid_points" in data
+        assert "overall_confidence" in data
+        assert 0 <= data["overall_confidence"] <= 1
 
 
 def test_sea_ice_predict():

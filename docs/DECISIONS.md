@@ -30,3 +30,10 @@
 - **Bootstrap CI parameters.** n = 1 000, seed = 0 (fixed for reproducibility). CIs are on the per-cell absolute-error distribution across all test samples.
 - **IIEE area approximation.** Cell areas are computed as flat-Earth (latitude-scaled rectangle) on the fixture's lat/lon grid. When real EASE2 or Polar Stereographic data arrive, `AnalysisGrid.cell_area_km2()` should be used instead.
 
+## Phase 5
+
+- **Honest Serving & Model Readiness.** Training and evaluating a model intended for real decision support requires a verified, real harmonised dataset (not `FIXTURE_SYNTHETIC`). In accordance with the non-fabrication rules, model training scripts (`scripts/train_sea_ice.py`), model architectures (`SeaIcePixelForecaster`, `SeaIceUNet`), registry (`backend/app/ml/registry.py`), model card (`docs/models/sea_ice_model_card.md`), and serving configuration (`config/serving.yaml`) are implemented and wired. However, `config/serving.yaml` explicitly records `status: NO_MODEL_TRAINED` with `max_validated_lead: 0`.
+- **Serving Fallback & Fail-Closed Gate.** `backend/app/services/sea_ice_service.py` is configured to read `config/serving.yaml`. When `max_validated_lead == 0`, forecast requests return `data_mode: "unavailable"` and do not silently fall back to synthetic demo forecasts without appropriate gating.
+- **Quarantine.** The legacy monolithic or placeholder `sea_ice_model.py` and `train_sea_ice.py` have been moved to `backend/app/ml/quarantine/` and superseded by the modular pixel and U-Net implementations and the reproducible `scripts/train_sea_ice.py`.
+
+

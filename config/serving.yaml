@@ -1,0 +1,36 @@
+# Sea-ice serving configuration — per §7.6 and §12.1
+#
+# STATUS: NO_MODEL_TRAINED
+#
+# This file is read by app/services/sea_ice_service.py to decide what to serve
+# at each lead.  Currently no model artifact exists because training requires a
+# verified real harmonised dataset (not FIXTURE_SYNTHETIC).
+# See docs/DATA_LINEAGE.md and docs/DECISIONS.md §Phase 4 for the blocker.
+#
+# When training completes, scripts/train_sea_ice.py writes the per-lead
+# decisions here automatically.  Manual editing of this file is strongly
+# discouraged: only the training script should update served_model_by_lead.
+#
+# Outcome vocabulary (per §7.6):
+#   "no_model"          — no trained artifact; serve best evaluated baseline
+#   "persistence"       — model trained but does not beat persistence
+#   "damped_persistence"— model trained but does not beat damped persistence
+#   "seaice_pixel"      — pixel GB model is the winner at this lead
+#   "seaice_unet"       — U-Net is the winner at this lead
+#
+# The API refuses requests beyond max_validated_lead with HTTP 422.
+
+status: NO_MODEL_TRAINED
+max_validated_lead: 0       # 0 means "no validated lead yet"
+
+# Per-lead decisions — will be populated by scripts/train_sea_ice.py
+served_model_by_lead: {}
+
+# When no artifact exists, serve this fallback baseline for informational
+# "unavailable" responses. Never silently substitute a model.
+fallback_baseline: damped_persistence
+fallback_tau_days: 14
+
+# Evaluation source — filled by train script
+evaluation_file: null        # path to results/seaice_eval.json once generated
+evaluation_dataset_status: null   # FIXTURE_SYNTHETIC or REAL
