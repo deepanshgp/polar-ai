@@ -1,0 +1,102 @@
+# POLAR-AI Infrastructure as Code (IaC) - Render Blueprint
+# Documentation: https://render.com/docs/blueprint-spec
+#
+# This blueprint defines:
+#   1. PostgreSQL + PostGIS database
+#   2. FastAPI backend web service (Dockerized with GDAL/PROJ geospatial libraries)
+#   3. React (Vite) frontend static site (with client-side routing & rewrite rules)
+#   4. Persistent disk for cached NetCDF arrays and trained model artifacts
+
+services:
+  # ─── FastAPI Backend Web Service ───────────────────────────────────────────
+  - type: web
+    name: polar-ai-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: standard
+    region: oregon
+    healthCheckPath: /api/health
+    numInstances: 1
+    disk:
+      name: polar-ai-data
+      mountPath: /app/data
+      sizeGB: 10
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: DATA_MODE
+        value: live
+      - key: UPDATE_INTERVAL_MINUTES
+        value: "60"
+      - key: SCHEDULER_ENABLED
+        value: "true"
+      - key: SECRET_KEY
+        generateValue: true
+      # Database connection from managed database
+      - key: DATABASE_URL
+        fromDatabase:
+          name: polar-ai-db
+          property: connectionString
+      # Allowed origins: include frontend Render URL and localhost
+      - key: CORS_ORIGINS
+        value: "https://polar-ai-frontend.onrender.com,http://localhost:3000"
+      # External API keys & credentials (optional / set via Render Dashboard)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: COPERNICUS_CLIENT_ID
+        sync: false
+      - key: COPERNICUS_CLIENT_SECRET
+        sync: false
+      - key: AIS_PROVIDER
+        value: "aisstream"
+      - key: AIS_API_KEY
+        sync: false
+      - key: AIS_WS_URL
+        value: "wss://stream.aisstream.io/v0/stream"
+
+  # ─── React Frontend Static Site ────────────────────────────────────────────
+  - type: web
+    name: polar-ai-frontend
+    runtime: static
+    buildCommand: "cd frontend && npm install && npm run build"
+    staticPublishPath: "./frontend/dist"
+    plan: free
+    region: oregon
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      # SPA rewrite rule so React Router handles client-side routes
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: polar-ai-backend
+          property: host
+          # Will inject the backend hostname into the frontend build
+      - key: VITE_APP_NAME
+        value: "POLAR-AI"
+
+databases:
+  # ─── Managed PostgreSQL Database with PostGIS ──────────────────────────────
+  # Render PostgreSQL supports `CREATE EXTENSION postgis;` on standard plans.
+  - name: polar-ai-db
+    databaseName: polarai_db
+    user: polarai
+    plan: standard
+    region: oregon
+    postgresMajorVersion: "15"

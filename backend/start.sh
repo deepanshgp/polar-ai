@@ -27,8 +27,12 @@ fi
 
 # Train models if not present
 if [ ! -f "/app/models/rf_24h.pkl" ]; then
-    echo "  Training sea ice models..."
-    python -m app.ml.train_sea_ice || echo "  Model training skipped (will use physics baseline)"
+    echo "  Checking sea ice models..."
+    if [ -f "/app/scripts/train_sea_ice.py" ]; then
+        python /app/scripts/train_sea_ice.py || echo "  Model training skipped (using baselines)"
+    else
+        echo "  Model training skipped (using physics baseline)"
+    fi
 fi
 
 echo "=== Starting POLAR-AI API server ==="
