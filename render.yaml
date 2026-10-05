@@ -1,11 +1,19 @@
 # POLAR-AI Infrastructure as Code (IaC) - Render Blueprint
 # Documentation: https://render.com/docs/blueprint-spec
 #
+# FREE TIER configuration — no payment required.
+#
 # This blueprint defines:
-#   1. PostgreSQL + PostGIS database
-#   2. FastAPI backend web service (Dockerized with GDAL/PROJ geospatial libraries)
-#   3. React (Vite) frontend static site (with client-side routing & rewrite rules)
-#   4. Persistent disk for cached NetCDF arrays and trained model artifacts
+#   1. PostgreSQL 15 database (free plan — 1 GB, expires after 90 days)
+#   2. FastAPI backend web service (free plan — spins down after 15 min inactivity)
+#   3. React (Vite) frontend static site (free — always-on CDN)
+#
+# Free tier caveats:
+#   - Backend cold-starts after inactivity (~30s first request delay).
+#   - Postgres free plan expires after 90 days; export data before then.
+#   - No persistent disk on free tier; /app/data directory is ephemeral per deploy.
+#   - PostGIS may not be available on the free Postgres plan.
+#     If migrations fail, set DATA_MODE=demo and the app will use synthetic data.
 
 services:
   # ─── FastAPI Backend Web Service ───────────────────────────────────────────
@@ -14,60 +22,67 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
-    plan: standard
+    plan: free
     region: oregon
     healthCheckPath: /api/health
     numInstances: 1
-    disk:
-      name: polar-ai-data
-      mountPath: /app/data
-      sizeGB: 10
+    # Note: no disk block — persistent disks are paid-only on Render.
+    # Cache directories fall back to /tmp (ephemeral, wiped on redeploy).
     envVars:
       - key: APP_ENV
         value: production
       - key: DEBUG
         value: "false"
+      # demo mode is safe for free tier: no external data required.
+      # Change to "live" once real data sources are available.
       - key: DATA_MODE
-        value: live
+        value: demo
+      - key: DEMO_RANDOM_SEED
+        value: "42"
       - key: UPDATE_INTERVAL_MINUTES
         value: "60"
       - key: SCHEDULER_ENABLED
-        value: "true"
+        value: "false"
       - key: SECRET_KEY
         generateValue: true
-      # Database connection from managed database
+      # Database connection auto-linked from managed database below
       - key: DATABASE_URL
         fromDatabase:
           name: polar-ai-db
           property: connectionString
-      # Allowed origins: include frontend Render URL and localhost
+      # Allowed origins: include the Render-assigned frontend URL
       - key: CORS_ORIGINS
-        value: "https://polar-ai-frontend.onrender.com,http://localhost:3000"
-      # External API keys & credentials (optional / set via Render Dashboard)
+        value: "https://polar-ai-frontend.onrender.com,http://localhost:3000,http://localhost:5173"
+      # Optional external API keys — leave blank if not available
       - key: OPENAI_API_KEY
-        sync: false
+        value: ""
       - key: GEMINI_API_KEY
-        sync: false
+        value: ""
       - key: GROQ_API_KEY
-        sync: false
+        value: ""
       - key: COPERNICUS_CLIENT_ID
-        sync: false
+        value: ""
       - key: COPERNICUS_CLIENT_SECRET
-        sync: false
-      - key: AIS_PROVIDER
-        value: "aisstream"
+        value: ""
       - key: AIS_API_KEY
-        sync: false
-      - key: AIS_WS_URL
-        value: "wss://stream.aisstream.io/v0/stream"
+        value: ""
 
-  # ─── React Frontend Static Site ────────────────────────────────────────────
+  # ─── React Frontend Static Site ─────────────────────────────────────────────
+  # Static sites are always free and globally CDN-distributed on Render.
+  # No region key allowed here.
   - type: web
     name: polar-ai-frontend
     runtime: static
     buildCommand: "cd frontend && npm install && npm run build"
     staticPublishPath: "./frontend/dist"
     plan: free
+    envVars:
+      # Hard-code the backend URL to the known Render service URL.
+      # Update this if your backend service name changes.
+      - key: VITE_API_URL
+        value: "https://polar-ai-backend.onrender.com"
+      - key: VITE_APP_NAME
+        value: "POLAR-AI"
     headers:
       - path: /*
         name: Cache-Control
@@ -76,26 +91,21 @@ services:
         name: Cache-Control
         value: public, max-age=31536000, immutable
     routes:
-      # SPA rewrite rule so React Router handles client-side routes
+      # SPA rewrite: all unknown paths serve index.html so React Router works
       - type: rewrite
         source: /*
         destination: /index.html
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          type: web
-          name: polar-ai-backend
-          property: host
-          # Will inject the backend hostname into the frontend build
-      - key: VITE_APP_NAME
-        value: "POLAR-AI"
 
 databases:
-  # ─── Managed PostgreSQL Database with PostGIS ──────────────────────────────
-  # Render PostgreSQL supports `CREATE EXTENSION postgis;` on standard plans.
+  # ─── Managed PostgreSQL Database ────────────────────────────────────────────
+  # Free plan: 256 MB RAM, 1 GB storage.
+  # ⚠ Expires and is DELETED by Render after 90 days on the free plan.
+  # PostGIS extension may not be available on free plan.
+  # The Alembic migrations include `CREATE EXTENSION IF NOT EXISTS postgis`
+  # which will silently skip if unavailable; spatial columns fall back to float.
   - name: polar-ai-db
     databaseName: polarai_db
     user: polarai
-    plan: standard
+    plan: free
     region: oregon
     postgresMajorVersion: "15"
