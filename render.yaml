@@ -75,7 +75,6 @@ services:
     runtime: static
     buildCommand: "cd frontend && npm install && npm run build"
     staticPublishPath: "./frontend/dist"
-    plan: free
     envVars:
       # Hard-code the backend URL to the known Render service URL.
       # Update this if your backend service name changes.
