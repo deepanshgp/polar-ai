@@ -21,7 +21,7 @@ services:
     name: polar-ai-backend
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: .
+    dockerContext: ./backend
     plan: free
     region: oregon
     healthCheckPath: /api/health
